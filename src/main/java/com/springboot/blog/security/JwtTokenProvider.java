@@ -1,10 +1,7 @@
 package com.springboot.blog.security;
 
 import com.springboot.blog.exception.BlogAPIException;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,11 +9,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
 
+@Component
 public class JwtTokenProvider {
 
     @Value("${app.jwt-secret}")
@@ -46,13 +45,24 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 
-    public String getUsername(String token) {
-        return Jwts.parser().parseClaimsJwt(token).getBody().getSubject();
+    public String getUsername(String token){
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        String username = claims.getSubject();
+
+        return username;
     }
 
     public boolean validateToken(String token) {
         try{
-            Jwts.parser().parse(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(key())
+                    .build()
+                    .parse(token);
             return true;
         }catch (MalformedJwtException malformedJwtException){
             throw new BlogAPIException(HttpStatus.BAD_REQUEST, "Invalid JWT token");
